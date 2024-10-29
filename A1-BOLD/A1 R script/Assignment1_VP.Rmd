@@ -1,0 +1,203 @@
+---
+title: "Assignment 1: Using BOLD"
+author: "Vivian Phung (1083290)"
+date: "2024-10-04"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+# Set global chunk options
+knitr::opts_chunk$set(tidy = TRUE, tidy.opts = list(width.cutoff = 90), echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+## Introduction 
+
+Tuna is one of the most popular fish consumed worldwide and due to its high demand, this can result in them being overfished. Species such as the Yellowfin Tuna​ (Augustinis, 2024)​, Pacific bluefin tuna (Augustinis, 2024)​, and the Atlantic bigeye (Augustinis, 2024)​, are particularly being affected by illegal fishing practices to meet the demands of consumers. Overfishing often leads to a decrease in population, leading to a potential decline in their genetic diversity​ (Sadler, Watts, & Uusi-Heikkilä, 2023)​. However, it can also be possible that some tuna populations could maintain some genetic diversity despite overfishing. This study will use the data available on BOLD to examine the geographic distribution of tuna populations and analyze whether overfishing is significantly impacting the genetic diversity of the tuna species and its surrounding ecosystems. 
+
+```{r}
+# import libraries
+library(styler) #styling code
+library(formatR) #R markdown format
+library(tidyverse)
+library(ggplot2) #plotting
+library(sf)
+library(seqinr) #Writing to Fasta
+library(ape) #PCA analysis
+library(pegas) #Good to integrate with ape
+library(Biostrings) #Reading fasta files
+library(msa) #DNA sequence Alignment
+```
+
+```{r}
+# Getting data from BOLD
+
+# df_tuna_BOLD<- read_tsv("http://www.boldsystems.org/index.php/API_Public/combined?bin=BOLD:AAA7352&format=tsv")
+
+#I have also provided the tsv file that i've downloaded from BOLD from prior. 
+df_tuna_BOLD <- read_tsv(file = "../A1 data/tuna_bold_data_20240922_1441.tsv")
+
+# Filtering BOLD data.
+df_tuna_BOLD.sub <- na.omit(df_tuna_BOLD[, c( "processid", "bin_uri", "species_name",
+  "country", "lat", "lon", "nucleotides")]) 
+```
+
+```{r}
+# __World Map Data
+world_coordinates <- map_data("world") # Getting world map data
+
+# Base World Map
+ggplot() +
+  geom_map(
+    data = world_coordinates, map = world_coordinates,
+    aes(x = long, y = lat, map_id = region), fill = "white", color = "black"
+  ) +
+
+  # #Plotted Tuna species from BOLD data
+  geom_point(
+    data = df_tuna_BOLD.sub,
+    aes(x = lon, y = lat, colour = species_name),
+    size = 1
+  ) +
+  coord_fixed(ratio = 4 / 3) +
+
+  # Label Parameters
+  labs(title = "Tuna Collection Sites Around the World") + # Graph Title
+  guides(color = guide_legend(title = "Tuna Species")) + # Legend Title
+  theme(
+    # Legend Parameters
+    legend.position = "right",
+    legend.title = element_text(face = "bold", size = 12), # Legend title
+    legend.text = element_text(size = 8), # Customize legend items
+    legend.justification = c("center", "top"),
+    legend.spacing.y = unit(0.5, "cm"),
+  )
+```
+**Figure 1:** Tuna Collection Sites Around the World
+
+```{r}
+# __Creating the PCA plot using fasta files containing Nucleotide sequences of Tuna Species.
+
+# Extracting the nucleotide sequences of each tuna species and their unique IDS
+nucleotide_sequences <- as.character(df_tuna_BOLD.sub$nucleotides)
+sequence_ids <- as.character(df_tuna_BOLD.sub$species_name)
+
+# Writing out a fasta file in order to analyze nucleotide sequences
+write.fasta(
+  sequences = as.list(nucleotide_sequences),
+  names = sequence_ids,
+  file.out = "tuna_sequences.fasta"
+)
+
+# Analyzing the FASTA file that was made.
+sequences <- readDNAStringSet("tuna_sequences.fasta", format = "fasta")
+
+# Creating files for input and output, I prefer to write them to an outfile to ensure that my nucleotide sequences do not get lost or overwritten by accident while coding. 
+input_file <- "tuna_sequences.fasta"
+output_file <- "aligned_tuna_sequences.fasta"
+
+# MAFFT is an alignment method to align nucleotide sequences. Run MAFFT on command line since msa methods are not fast enough to analyze large datasets. However, if the species BIN or sample number is smaller, you can use the following alignment methods on msa: ClustalW, ClustalOmega, Muscle
+
+
+#Aligning sequeces using MAFFT and putting aligned sequences in a new fasta file. 
+system(paste("mafft", input_file, ">", output_file))
+
+# Reading the aligned sequences from a FASTA file & Convert the aligned sequences to a DNAbin object
+aligned_sequences <- readDNAStringSet("aligned_tuna_sequences.fasta", format = "fasta")
+alignment_bin <- as.DNAbin(aligned_sequences)
+
+# 3. Create a distance matrix and perform PCoA since we are trying to determine the genetic distance between species.
+dist_matrix <- dist.dna(alignment_bin, model = "raw")
+pca_result <- pcoa(dist_matrix) 
+pca_data <- as.data.frame(pca_result$vectors) # data frame for plotting
+sequence_names <- names(aligned_sequences) # Names from the aligned sequences
+pca_data$Sample <- sequence_names # Adding sample names to data
+```
+
+
+```{r}
+# Generating PCA Plot
+ggplot(pca_data, aes(x = Axis.1, y = Axis.2, label = Sample, colour = Sample)) +
+  geom_point() +
+  labs(
+    title = "PCA of Tuna Sequences",
+    x = "PCA Axis 1",
+    y = "PCA Axis 2"
+  ) +
+  theme_minimal()
+```
+**Figure 2a:** PCA plot of Tuna Sequences 
+
+```{r}
+# Generating Zoomed in PCA Plot
+ggplot(pca_data, aes(x = Axis.1, y = Axis.2, label = Sample, colour = Sample)) +
+  geom_point() +
+  labs(
+    title = "Enlarged PCA of Aligned Tuna Sequences",
+    x = "PCA Axis 1",
+    y = "PCA Axis 2"
+  ) +
+  
+  #Scale Adjustment
+  scale_x_continuous(name = "PCA1", limits = c(-0.05, 0.1)) +
+  scale_y_continuous(name = "PCA2", limits = c(-0.05, 0.07)) +
+  theme_minimal()
+```
+**Figure 2b:** Enlarged PCA plot of Tuna Species 
+
+
+```{r}
+# __Tuna Sampling Bar Graph
+ggplot(df_tuna_BOLD.sub, aes(x = country)) +
+  coord_flip() + # Flipping the Bar Graph horizontally
+
+  # Adjust the bar width
+  geom_bar(aes(fill = species_name), width = 0.9) +
+  labs(
+    title = "Sampling Completeness by Country",
+    x = "Country",
+    y = "Number of Samples",
+    fill = "Species"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1),
+    # Legend title appearance
+    legend.title = element_text(face = "bold", size = 10),
+
+    # Legend item text size
+    legend.text = element_text(size = 8),
+
+    # Adjusting the Grid
+    panel.grid.major = element_blank(), # Removing Grid
+    panel.background = element_rect(fill = "white"), # Background Colour
+    panel.grid.minor = element_blank() # Removing Grid
+  )
+```
+**Figure 3:** Bar Graph depicting the tuna sampling completness of each country. 
+
+## Discussion 
+
+The world map (Fig 1.) shows the geographical locations of tuna species that are present across various countries and oceans. This can be seen that tuna species are not localized and any decline in their genetic diversity could cause global effects. As these species are interconnected, a loss of genetic diversity in one region could reduce the species to adapt to environmental changes. Therefore, it is crucial to maintain sustainable fishing practices to avoid any significant negative impact on the tuna species and their ecosystems.  
+
+The PCA graph (Fig 2a.) suggests that genetic variation among the tuna populations is limited based on the clustered points. When taking a closer look at the PCA plot (Fig 2. b) it's easier to define clusters of different tuna species. While some of the points may appear further away, the small scale of the plot implies little overall genetic diversity between these species, Additionally, when looking back at the filtered data from BOLD, samples have different collection sites which may explain the same species have separate points and the outliers that we see if (Fig 2a.). This highlights the importance of having standardized sampling protocols for open source databases such as BOLD to enhance accurate genetic studies. Future research should focus on developing and implementing standard protocols for sampling to facilitate accurate data collection. 
+
+Fig 3. illustrates the number of tuna samples found in each region. Regions with higher sample richness, such as Italy, Cuba, and Mexico may indicate healthier populations or more intensive monitoring. The graph also shows uneven sampling, with lower sampling in other regions. This could indicate there is an incomplete understanding of tuna population in those areas. With fewer samples across these regions, it is possible that these tuna populations could have a higher risk of being overfished due to lack of monitoring. Addressing these genetic gaps could provide a clearer picture of the genetic health of tuna populations and help mitigate the risks associated with overfishing. 
+
+## Conclusion
+
+Based on the data from BOLD, overfishing negatively impacts the genetic diversity of tuna species, potentially making them more vulnerable in their environment. While some tuna populations have high sampling richness, suggesting that there is potential to maintain their genetic diversity, the overall genetic variation between species remains limited. This highlights the importance of enforcing global fishing regulations. Successful regulations in Marseille, France have led to population recovery for Atlantic bluefin tuna, Southern blue fin tuna, albacore and yellowfin tuna (Tuna species recovering despite growing pressures on marine life - IUCN Red List, 2021). However, the tuna stock remains depleted, and it is crucial to uphold strict fishing regulations from further decline. 
+
+Moving forward, further research is also needed to address sampling biases in the BOLD database. As open submission models have a risk of inconsistencies, there should be stricter data validation protocols. This would ensure records are reliable and can help contribute to more informed conservation strategies, ensuring long survival of tuna.
+
+## Acknowledgements 
+
+I would like to express my gratitude to Rebecca and Frances for their moral support throughout this project, Derick for his guidance in using R Markdown, my classmate (whose name I regretfully forget) for providing valuable advice on improving the clarity of my graphs, Brittany for inspiring me to frame a research question that is meaningful to me, and lastly, ChatGPT for assisting me in resolving code errors that I could not understand.
+
+\newpage
+
+## References
+
+Augustinis, F. D. (2024, May 23). No mercy for overfished yellowfin tuna at Indian Ocean fisheries meeting. Retrieved from https://news.mongabay.com/2024/05/no-mercy-for-overfished-yellowfin-tuna-at-indian-ocean-fisheries-meeting/
+
+Sadler, D. E., Watts, P. C., & Uusi-Heikkilä, S. (2023). The Riddle of How Fisheries Influence Genetic Diversity. Fishes.
+
+Tuna species recovering despite growing pressures on marine life - IUCN Red List. (2021, September 4). Retrieved from IUCN: https://iucn.org/news/species/202109/tuna-species-recovering-despite-growing-pressures-marine-life-iucn-red-list
