@@ -1,6 +1,11 @@
 # Using BOLD to determine if the Biodiversity of Tuna is affected due to Overfishing Practices.
 
-All the programs and scripts that are developed is this repository are used ONLY for learning purposes.
+## Table of Contents
+- [Introduction](Introduction)
+- [Methodology](Methodology)
+- [Features](Features)
+- [Requirements](#requirements)
+- [Data Sources](#data-sources)
 
 ## Introduction
 Due to high demand, tuna species like Yellowfin, Pacific Bluefin, and Atlantic Bigeye are frequently overfished, often through illegal practices, which may threaten their genetic diversity. This program will use BOLD data to assess the geographic distribution of tuna populations and investigate if overfishing significantly impacts their genetic diversity and surrounding ecosystems.
