@@ -6,9 +6,11 @@ All the programs and scripts that are developed is this repository are used ONLY
 Due to high demand, tuna species like Yellowfin, Pacific Bluefin, and Atlantic Bigeye are frequently overfished, often through illegal practices, which may threaten their genetic diversity. This program will use BOLD data to assess the geographic distribution of tuna populations and investigate if overfishing significantly impacts their genetic diversity and surrounding ecosystems.
 
 ## Methodology
-* Data Collection: Cleaned and formatted the data for analysis.
+* Data Collection: Obtaining genetic sequence data for multiple tuna species from BOLD.
 * Data Processing: Cleaned and formatted the data for analysis.
 * Analysis:
+  - Calculated genetic diversity metrics for each tuna species.
+  - Compared these diversity indices to known fishing practices and population trends.
 
 ## Features
 * Bioinformatics tools for sequence analysis in R.
