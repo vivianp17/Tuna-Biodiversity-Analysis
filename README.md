@@ -17,7 +17,7 @@ Due to high demand, tuna species like Yellowfin, Pacific Bluefin, and Atlantic B
 ## Requirements
 * R Version 3.6.0+
 * R Studio 2024.09.0+375
-* Libraries that are used: <a name="ape"></a> <a name=" ">Biostrings</a> <a name="ggplot2 "></a> <a name="msa"></a> <a name="pegas"></a>  <a name="seqinr"></a> <a name="sf"></a>
+* Libraries that are used: <a name="ape"> </a> <a name="Biostrings">Biostrings</a> <a name="ggplot2 "></a> <a name="msa"></a> <a name="pegas"></a>  <a name="seqinr"></a> <a name="sf"></a>
 
 ## Data Sources
 [BOLD System](https://boldsystems.org/)
