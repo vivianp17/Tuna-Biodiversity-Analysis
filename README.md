@@ -34,7 +34,7 @@ Due to high demand, tuna species like Yellowfin, Pacific Bluefin, and Atlantic B
 
 
 ## Attributions
-Primary Author: Vivian Phung, for developing the main script to analyze tuna biodiversity.
-Secondary Author: [Hadi Alhashimi](https://github.com/Draxxupaxx), for optimizing code efficiency by creating functions to streamline FASTA file processing, implementing a filter function to ensure high-quality data retrieval, and adding data checks for species and country accuracy. 
+**Primary Author:** Vivian Phung, for developing the main script to analyze tuna biodiversity.
+<br> **Secondary Author:** [Hadi Alhashimi](https://github.com/Draxxupaxx), for optimizing code efficiency by creating functions to streamline FASTA file processing, implementing a filter function to ensure high-quality data retrieval, and adding data checks for species and country accuracy. 
 
 
