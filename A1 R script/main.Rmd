@@ -26,7 +26,8 @@ library(ape) #PCA analysis
 library(pegas) #Good to integrate with ape
 library(Biostrings) #Reading fasta files
 library(msa) #DNA sequence Alignment
-```
+library(plotly) #Data Visualization
+``` 
 
 ```{r}
 # Getting data from BOLD
@@ -39,6 +40,120 @@ df_tuna_BOLD <- read_tsv(file = "../A1 data/tuna_bold_data_20240922_1441.tsv")
 # Filtering BOLD data.
 df_tuna_BOLD.sub <- na.omit(df_tuna_BOLD[, c( "processid", "bin_uri", "species_name",
   "country", "lat", "lon", "nucleotides")]) 
+
+# Data Checks
+# Count occurrences of each species name in df_tuna_BOLD.sub and sort in descending order
+species_counts <- df_tuna_BOLD.sub %>%
+  group_by(species_name) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+
+species_counts
+
+# Count occurrences of each country in df_tuna_BOLD.sub and sort in descending order
+country_counts <- df_tuna_BOLD.sub %>%
+  group_by(country) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+
+country_counts
+
+# Summarize data by species and country
+summary_table <- df_tuna_BOLD.sub %>%
+  group_by(species_name, country) %>%
+  summarise(
+    num_samples = n(),
+    avg_lat = mean(lat, na.rm = TRUE),
+    avg_lon = mean(lon, na.rm = TRUE)
+  )
+
+# Visualize summarized data by species and country
+Summary_Table_plot <- plot_ly(
+  data = summary_table,
+  x = ~num_samples,
+  y = ~country,
+  color = ~species_name,
+  type = "bar",
+  orientation = "h",
+  text = ~paste("Species: ", species_name, "<br>Samples: ", num_samples),
+  hoverinfo = "text"
+) %>%
+  layout(
+    title = "Sample Distribution by Country and Species",
+    xaxis = list(title = "Number of Samples"),
+    yaxis = list(title = "Country", categoryorder = "total ascending"),
+    barmode = "stack"
+  )
+
+Summary_Table_plot
+
+# Filter Data
+#Function for filtering data based on nucleotides in order to only maintain the highest quality data
+filter_sequences <- function(df, min_seq_length = 500, nucleotide_column = "nucleotides") {
+  df %>%
+    mutate(
+      seq_length = nchar(!!sym(nucleotide_column)),
+      !!sym(nucleotide_column) := toupper(!!sym(nucleotide_column))  # Ensure uppercase nucleotides
+    ) %>%
+    filter(
+      seq_length >= min_seq_length,
+      !grepl("[^ATCG]", !!sym(nucleotide_column))  # Remove sequences with ambiguous nucleotides
+    ) %>%
+    select(-seq_length)
+}
+
+
+# Apply the filtering function
+df_tuna_BOLD.sub <- filter_sequences(df_tuna_BOLD.sub, min_seq_length = 500, nucleotide_column = "nucleotides")
+
+# Checks for filtered data
+# Count of filtered occurrences of each species name in df_tuna_BOLD.sub and sort in descending order
+species_counts_filtered <- df_tuna_BOLD.sub %>%
+  group_by(species_name) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+
+species_counts_filtered
+
+# Count of filtered occurrences of each country in df_tuna_BOLD.sub and sort in descending order
+country_counts_filtered <- df_tuna_BOLD.sub %>%
+  group_by(country) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+
+country_counts_filtered
+
+# Summarize filtered data by species and country
+summary_table_filtered <- df_tuna_BOLD.sub %>%
+  group_by(species_name, country) %>%
+  summarise(
+    num_samples = n(),
+    avg_lat = mean(lat, na.rm = TRUE),
+    avg_lon = mean(lon, na.rm = TRUE)
+  )
+
+# Visualize filtered summarized data by species and country
+filtered_Summary_Table_plot <- plot_ly(
+  data = summary_table_filtered,
+  x = ~num_samples,
+  y = ~country,
+  color = ~species_name,
+  type = "bar",
+  orientation = "h",
+  text = ~paste("Species: ", species_name, "<br>Samples: ", num_samples),
+  hoverinfo = "text"
+) %>%
+  layout(
+    title = "Sample Distribution by Country and Species",
+    xaxis = list(title = "Number of Samples"),
+    yaxis = list(title = "Country", categoryorder = "total ascending"),
+    barmode = "stack"
+  )
+
+filtered_Summary_Table_plot
+
+
+
 ```
 
 ```{r}
@@ -81,25 +196,29 @@ ggplot() +
 nucleotide_sequences <- as.character(df_tuna_BOLD.sub$nucleotides)
 sequence_ids <- as.character(df_tuna_BOLD.sub$species_name)
 
-# Writing out a fasta file in order to analyze nucleotide sequences
-write.fasta(
-  sequences = as.list(nucleotide_sequences),
-  names = sequence_ids,
-  file.out = "tuna_sequences.fasta"
+# Function to create and align FASTA files
+process_fasta <- function(input_data, sequence_col, id_col, output_file) {
+  # Write FASTA file
+  write.fasta(
+    sequences = as.list(input_data[[sequence_col]]),
+    names = input_data[[id_col]],
+    file.out = output_file
+  )
+  
+  # Align sequences using MAFFT
+  aligned_output <- sub(".fasta$", "_aligned.fasta", output_file)
+  system(paste("mafft", output_file, ">", aligned_output))
+  
+  return(aligned_output)
+}
+
+# Use the automated FASTA processing function
+aligned_fasta <- process_fasta(
+  input_data = df_tuna_BOLD.sub,
+  sequence_col = "nucleotides",
+  id_col = "species_name",
+  output_file = "tuna_sequences.fasta"
 )
-
-# Analyzing the FASTA file that was made.
-sequences <- readDNAStringSet("tuna_sequences.fasta", format = "fasta")
-
-# Creating files for input and output, I prefer to write them to an outfile to ensure that my nucleotide sequences do not get lost or overwritten by accident while coding. 
-input_file <- "tuna_sequences.fasta"
-output_file <- "aligned_tuna_sequences.fasta"
-
-# MAFFT is an alignment method to align nucleotide sequences. Run MAFFT on command line since msa methods are not fast enough to analyze large datasets. However, if the species BIN or sample number is smaller, you can use the following alignment methods on msa: ClustalW, ClustalOmega, Muscle
-
-
-#Aligning sequeces using MAFFT and putting aligned sequences in a new fasta file. 
-system(paste("mafft", input_file, ">", output_file))
 
 # Reading the aligned sequences from a FASTA file & Convert the aligned sequences to a DNAbin object
 aligned_sequences <- readDNAStringSet("aligned_tuna_sequences.fasta", format = "fasta")
@@ -111,6 +230,9 @@ pca_result <- pcoa(dist_matrix)
 pca_data <- as.data.frame(pca_result$vectors) # data frame for plotting
 sequence_names <- names(aligned_sequences) # Names from the aligned sequences
 pca_data$Sample <- sequence_names # Adding sample names to data
+
+
+
 ```
 
 
