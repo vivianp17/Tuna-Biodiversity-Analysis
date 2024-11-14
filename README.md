@@ -31,3 +31,10 @@ Due to high demand, tuna species like Yellowfin, Pacific Bluefin, and Atlantic B
 
 ## Data Sources
 [BOLD System](https://boldsystems.org/)
+
+
+## Attributions
+Primary Author: Vivian Phung, for developing the main script to analyze tuna biodiversity.
+Secondary Author: [Hadi Alhashimi](https://github.com/Draxxupaxx), for optimizing code efficiency by creating functions to streamline FASTA file processing, implementing a filter function to ensure high-quality data retrieval, and adding data checks for species and country accuracy. 
+
+
